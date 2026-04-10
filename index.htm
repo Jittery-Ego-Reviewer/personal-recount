@@ -145,10 +145,10 @@
                 <p>👉 <strong>目標：</strong> 提升個人短講能力。</p>
                 <p>👉 <strong>玩法：</strong></p>
                 <ol class="list-decimal list-inside ml-2 space-y-2">
-                    <li>進入遊戲後，<strong>向下拉動拉桿</strong>以隨機抽取「短講題目」及「加分挑戰」。</li>
+                    <li>進入遊戲後，<strong>向下拉動拉桿</strong>以隨機抽取「短講題目」。</li>
                     <li>抽取題目後，你可以選擇是否設定演講時間（可選）。</li>
                     <li>準備好後，點擊「開始演講」。</li>
-                    <li>努力完成演講，並嘗試達成加分挑戰！</li>
+                    <li>努力完成演講！</li>
                 </ol>
             </div>
             
@@ -165,21 +165,13 @@
             </div>
 
             <div class="flex flex-col md:flex-row w-full gap-6">
-                <!-- 左側：題目與任務卡片 -->
+                <!-- 左側：題目卡片 -->
                 <div class="flex-grow flex flex-col gap-6">
                     <!-- 題目卡 -->
                     <div class="bg-white rounded-3xl shadow-lg p-6 flex-grow border-l-8 border-blue-400 relative overflow-hidden flex flex-col">
                         <div class="text-sm font-bold text-blue-400 mb-2 uppercase tracking-widest">題目 Topic</div>
-                        <div id="topic-display" class="flex-grow flex items-center justify-center text-xl md:text-2xl font-medium text-gray-800 text-center min-h-[120px]">
+                        <div id="topic-display" class="flex-grow flex items-center justify-center text-xl md:text-2xl font-medium text-gray-800 text-center min-h-[250px]">
                             <span class="text-gray-400 italic">請拉動右方拉桿抽取題目...</span>
-                        </div>
-                    </div>
-
-                    <!-- 加分任務卡 -->
-                    <div class="bg-white rounded-3xl shadow-lg p-6 border-l-8 border-yellow-400 relative overflow-hidden flex flex-col">
-                        <div class="text-sm font-bold text-yellow-500 mb-2 uppercase tracking-widest">加分挑戰 Bonus Target</div>
-                        <div id="bonus-display" class="flex-grow flex items-center justify-center text-lg md:text-xl font-medium text-gray-800 text-center min-h-[80px]">
-                            <span class="text-gray-400 italic">等待抽取...</span>
                         </div>
                     </div>
                 </div>
@@ -195,7 +187,7 @@
                         </div>
                     </div>
                     
-                    <!-- 新增：抽取後顯示的計時選項 -->
+                    <!-- 抽取後顯示的計時選項 -->
                     <div id="time-selection" class="hidden w-full flex-col gap-2 mb-4 fade-in">
                         <h4 class="text-sm font-bold text-gray-500 text-center">計時設定 (可選)</h4>
                         <div class="grid grid-cols-2 gap-2">
@@ -218,7 +210,7 @@
                         <button onclick="endGame()" class="w-full py-3 text-lg font-bold text-white rounded-2xl bg-blue-500 hover:bg-blue-600 transition-colors shadow-md">
                             ✅ 完成演講
                         </button>
-                        <button onclick="resetToLever()" class="w-full py-3 text-lg font-bold text-white rounded-2xl bg-red-400 hover:bg-red-500 transition-colors shadow-md">
+                        <button onclick="restartSpeech()" class="w-full py-3 text-lg font-bold text-white rounded-2xl bg-red-400 hover:bg-red-500 transition-colors shadow-md">
                             🔄 重新開始
                         </button>
                     </div>
@@ -233,8 +225,7 @@
             
             <div class="bg-gray-50 rounded-2xl p-6 mb-8 text-left border border-gray-200">
                 <h3 class="font-bold text-gray-500 mb-2">回顧：</h3>
-                <p class="text-lg text-gray-800 mb-4"><strong>題目：</strong> <span id="summary-topic"></span></p>
-                <p class="text-lg text-gray-800"><strong>加分挑戰：</strong> <span id="summary-bonus"></span></p>
+                <p class="text-lg text-gray-800"><strong>題目：</strong> <span id="summary-topic"></span></p>
             </div>
 
             <button onclick="resetGame()" class="py-4 px-10 text-2xl font-bold text-white rounded-2xl bg-[var(--light-blue)] hover:bg-[var(--blue-hover)] transition-colors shadow-lg">
@@ -264,21 +255,11 @@
             "請你説出一次印象最深刻的學校旅行，並談談你的感受。 "
         ];
 
-        const bonuses = [
-            "✨ 加入具體例子說明",
-            "🎯 運用與題目相關的精準詞彙",
-            "🔗 運用複句 (例如：雖然...但是...、因為...所以...)",
-            "🚩 運用標示語 (例如：首先、其次、總括而言)",
-            "👀 保持眼神接觸，不能只看著草稿",
-            "🗣️ 詳細解釋你的理據"
-        ];
-
         // --- 狀態變數 ---
         let selectedTime = 0; // 秒 (0 代表不限時)
         let timeRemaining = 0;
         let timerInterval = null;
         let currentTopic = "";
-        let currentBonus = "";
         let isGenerating = false;
         let isPaused = false;
         let isStopwatchMode = true;
@@ -366,18 +347,15 @@
             playSound('lever');
             
             const topicEl = document.getElementById('topic-display');
-            const bonusEl = document.getElementById('bonus-display');
             const actionBtn = document.getElementById('action-btn');
             
             actionBtn.classList.add('hidden'); // 隱藏開始按鈕
             topicEl.classList.add('shuffling-text');
-            bonusEl.classList.add('shuffling-text');
 
             let shuffleCount = 0;
             const maxShuffles = 15;
             const shuffleInterval = setInterval(() => {
                 topicEl.innerText = topics[Math.floor(Math.random() * topics.length)];
-                bonusEl.innerText = bonuses[Math.floor(Math.random() * bonuses.length)];
                 shuffleCount++;
 
                 if (shuffleCount >= maxShuffles) {
@@ -385,13 +363,9 @@
                     
                     // 最終結果
                     currentTopic = topics[Math.floor(Math.random() * topics.length)];
-                    currentBonus = bonuses[Math.floor(Math.random() * bonuses.length)];
-                    
                     topicEl.innerHTML = formatTextWithLineBreaks(currentTopic);
-                    bonusEl.innerHTML = currentBonus;
-                    
                     topicEl.classList.remove('shuffling-text');
-                    bonusEl.classList.remove('shuffling-text');
+                    
                     playSound('click'); // 完成音效
                     
                     // 顯示時間選擇與開始按鈕
@@ -481,31 +455,28 @@
             }
         }
 
-        function resetToLever() {
+        function restartSpeech() {
             playSound('click');
             clearInterval(timerInterval);
             isPaused = false;
-            isStopwatchMode = true;
             document.getElementById('timer-display').classList.remove('opacity-50');
 
-            // 隱藏控制按鈕
+            // 隱藏進行中的控制按鈕
             const controls = document.getElementById('active-controls');
             controls.classList.add('hidden');
             controls.classList.remove('flex');
             
-            // 隱藏時間選擇區與開始按鈕
-            document.getElementById('time-selection').classList.add('hidden');
-            document.getElementById('time-selection').classList.remove('flex');
-            document.getElementById('action-btn').classList.add('hidden');
+            // 重新顯示時間選擇區與開始按鈕 (保留已抽取的題目)
+            document.getElementById('time-selection').classList.remove('hidden');
+            document.getElementById('time-selection').classList.add('flex');
+            document.getElementById('action-btn').classList.remove('hidden');
             
-            // 重置文字與拉桿狀態
-            document.getElementById('topic-display').innerHTML = '<span class="text-gray-400 italic">請拉動右方拉桿抽取題目...</span>';
-            document.getElementById('bonus-display').innerHTML = '<span class="text-gray-400 italic">等待抽取...</span>';
-            
+            // 恢復拉桿 (允許再次抽取，如果不滿意目前題目的話)
             const handle = document.getElementById('lever-handle');
             handle.style.pointerEvents = 'auto';
             handle.style.opacity = '1';
             
+            // 重置時間顯示為初始選擇時間 (0 秒則顯示 00:00)
             updateTimerDisplay(selectedTime);
         }
 
@@ -518,7 +489,6 @@
             controls.classList.remove('flex');
 
             document.getElementById('summary-topic').innerHTML = formatTextWithLineBreaks(currentTopic);
-            document.getElementById('summary-bonus').innerText = currentBonus;
             
             switchScreen('game-screen', 'end-screen');
             createConfetti();
@@ -529,7 +499,6 @@
             // 重置狀態
             clearInterval(timerInterval);
             document.getElementById('topic-display').innerHTML = '<span class="text-gray-400 italic">請拉動右方拉桿抽取題目...</span>';
-            document.getElementById('bonus-display').innerHTML = '<span class="text-gray-400 italic">等待抽取...</span>';
             
             // 恢復拉桿
             const handle = document.getElementById('lever-handle');
