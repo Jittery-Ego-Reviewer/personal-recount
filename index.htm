@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>即席口頭報告大挑戰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自訂顏色與字體設定 */
+        :root {
+            --cream-bg: #FDFBF7;
+            --light-blue: #ADD8E6;
+            --blue-hover: #9AC0CD;
+            --dark-text: #2D3748;
+            --card-bg: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--cream-bg);
+            color: var(--dark-text);
+            font-family: 'PingFang HK', 'Microsoft JhengHei', 'Helvetica Neue', sans-serif;
+            overflow-x: hidden;
+            touch-action: pan-y; /* 防止下拉更新，允許垂直滾動 */
+        }
+
+        /* 隱藏與顯示的輔助類別 */
+        .hidden-screen { display: none !important; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 拉桿組件樣式 */
+        .lever-wrapper {
+            position: relative;
+            width: 80px;
+            height: 200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .lever-track {
+            width: 30px;
+            height: 100%;
+            background-color: #E2E8F0;
+            border-radius: 15px;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .lever-handle {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(145deg, var(--light-blue), #8abada);
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2), inset 0 -4px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            touch-action: none; /* 防止觸控滑動網頁 */
+        }
+        
+        .lever-handle:active {
+            cursor: grabbing;
+        }
+
+        .lever-handle.dragging {
+            transition: none;
+        }
+
+        /* 拉桿金屬桿 */
+        .lever-rod {
+            position: absolute;
+            top: 35px; /* 連接把手中心 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 100px;
+            background: linear-gradient(90deg, #94a3b8, #cbd5e1, #94a3b8);
+            z-index: 5;
+            transition: height 0.3s ease;
+        }
+
+        /* 文字洗牌動畫效果 */
+        .shuffling-text {
+            filter: blur(1px);
+            opacity: 0.7;
+            transform: scale(0.98);
+            transition: all 0.1s;
+        }
+
+        /* 倒數計時器動畫 */
+        .timer-warning {
+            color: #E53E3E;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* 紙屑煙火效果 */
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+            z-index: 1000;
+            pointer-events: none;
+            border-radius: 2px;
+        }
+
+        @keyframes confettiFall {
+            0% { opacity: 1; transform: translateY(-20px) rotate(0deg); }
+            100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- 標題列 -->
+    <header class="w-full py-4 bg-[var(--light-blue)] shadow-md text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 tracking-wider">🎤 即席口頭報告大挑戰</h1>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        
+        <!-- 畫面 1：開始設定畫面 -->
+        <div id="start-screen" class="w-full max-w-2xl bg-white rounded-3xl shadow-xl p-8 text-center fade-in border-4 border-[var(--light-blue)]">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">遊戲設定與指示</h2>
+            <div class="text-left mb-8 space-y-4 text-lg text-gray-600 bg-blue-50 p-6 rounded-2xl">
+                <p>👉 <strong>目標：</strong> 提升個人短講能力。</p>
+                <p>👉 <strong>玩法：</strong></p>
+                <ol class="list-decimal list-inside ml-2 space-y-2">
+                    <li>進入遊戲後，<strong>向下拉動拉桿</strong>以隨機抽取「短講題目」及「加分挑戰」。</li>
+                    <li>抽取題目後，你可以選擇是否設定演講時間（可選）。</li>
+                    <li>準備好後，點擊「開始演講」。</li>
+                    <li>努力完成演講，並嘗試達成加分挑戰！</li>
+                </ol>
+            </div>
+            
+            <button onclick="startGame()" id="start-btn" class="w-full py-4 text-2xl font-bold text-white rounded-2xl bg-green-500 hover:bg-green-600 transition-colors shadow-lg">進入遊戲</button>
+        </div>
+
+        <!-- 畫面 2：遊戲主畫面 -->
+        <div id="game-screen" class="hidden-screen w-full max-w-4xl fade-in flex flex-col items-center">
+            
+            <!-- 計時器顯示 -->
+            <div class="w-full flex justify-between items-center bg-white rounded-2xl shadow-md p-4 mb-6 border-2 border-[var(--light-blue)]">
+                <div class="text-xl font-semibold text-gray-600">剩餘時間</div>
+                <div id="timer-display" class="text-4xl font-mono font-bold text-gray-800">00:00</div>
+            </div>
+
+            <div class="flex flex-col md:flex-row w-full gap-6">
+                <!-- 左側：題目與任務卡片 -->
+                <div class="flex-grow flex flex-col gap-6">
+                    <!-- 題目卡 -->
+                    <div class="bg-white rounded-3xl shadow-lg p-6 flex-grow border-l-8 border-blue-400 relative overflow-hidden flex flex-col">
+                        <div class="text-sm font-bold text-blue-400 mb-2 uppercase tracking-widest">題目 Topic</div>
+                        <div id="topic-display" class="flex-grow flex items-center justify-center text-xl md:text-2xl font-medium text-gray-800 text-center min-h-[120px]">
+                            <span class="text-gray-400 italic">請拉動右方拉桿抽取題目...</span>
+                        </div>
+                    </div>
+
+                    <!-- 加分任務卡 -->
+                    <div class="bg-white rounded-3xl shadow-lg p-6 border-l-8 border-yellow-400 relative overflow-hidden flex flex-col">
+                        <div class="text-sm font-bold text-yellow-500 mb-2 uppercase tracking-widest">加分挑戰 Bonus Target</div>
+                        <div id="bonus-display" class="flex-grow flex items-center justify-center text-lg md:text-xl font-medium text-gray-800 text-center min-h-[80px]">
+                            <span class="text-gray-400 italic">等待抽取...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：互動拉桿區 -->
+                <div class="md:w-1/3 bg-white rounded-3xl shadow-lg p-6 flex flex-col items-center justify-center border-2 border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-600 mb-4 text-center">向下拉動抽取</h3>
+                    <div class="lever-wrapper mb-8">
+                        <div class="lever-track"></div>
+                        <div class="lever-rod" id="lever-rod"></div>
+                        <div class="lever-handle" id="lever-handle">
+                            <span class="text-white font-bold text-2xl select-none">⬇</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 新增：抽取後顯示的計時選項 -->
+                    <div id="time-selection" class="hidden w-full flex-col gap-2 mb-4 fade-in">
+                        <h4 class="text-sm font-bold text-gray-500 text-center">計時設定 (可選)</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="selectGameTime(60)" class="game-time-btn py-2 text-sm font-bold rounded-xl bg-[var(--cream-bg)] border border-[var(--light-blue)] text-gray-800 hover:bg-[var(--light-blue)] transition-colors">1 分鐘</button>
+                            <button onclick="selectGameTime(90)" class="game-time-btn py-2 text-sm font-bold rounded-xl bg-[var(--cream-bg)] border border-[var(--light-blue)] text-gray-800 hover:bg-[var(--light-blue)] transition-colors">1.5 分鐘</button>
+                            <button onclick="selectGameTime(120)" class="game-time-btn py-2 text-sm font-bold rounded-xl bg-[var(--cream-bg)] border border-[var(--light-blue)] text-gray-800 hover:bg-[var(--light-blue)] transition-colors">2 分鐘</button>
+                            <button onclick="selectGameTime(0)" class="game-time-btn py-2 text-sm font-bold rounded-xl bg-[var(--light-blue)] border border-[var(--light-blue)] text-white shadow-inner transition-colors" id="default-time-btn">不限時</button>
+                        </div>
+                    </div>
+
+                    <button id="action-btn" onclick="startTimer()" class="hidden w-full py-4 text-xl font-bold text-white rounded-2xl bg-green-500 hover:bg-green-600 transition-colors shadow-lg">
+                        ▶ 開始演講
+                    </button>
+
+                    <!-- 計時期間的暫停與重新開始按鈕 -->
+                    <div id="active-controls" class="hidden w-full flex-col gap-3 mt-4">
+                        <button id="pause-btn" onclick="togglePause()" class="w-full py-3 text-lg font-bold text-white rounded-2xl bg-yellow-500 hover:bg-yellow-600 transition-colors shadow-md">
+                            ⏸ 暫停
+                        </button>
+                        <button onclick="endGame()" class="w-full py-3 text-lg font-bold text-white rounded-2xl bg-blue-500 hover:bg-blue-600 transition-colors shadow-md">
+                            ✅ 完成演講
+                        </button>
+                        <button onclick="resetToLever()" class="w-full py-3 text-lg font-bold text-white rounded-2xl bg-red-400 hover:bg-red-500 transition-colors shadow-md">
+                            🔄 重新開始
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 畫面 3：總結/慶祝畫面 -->
+        <div id="end-screen" class="hidden-screen w-full max-w-2xl bg-white rounded-3xl shadow-xl p-10 text-center fade-in border-4 border-yellow-300 relative overflow-hidden">
+            <h2 class="text-5xl font-bold mb-6 text-yellow-500">時間到！</h2>
+            <p class="text-2xl text-gray-700 mb-8">辛苦了！做得好！🎉</p>
+            
+            <div class="bg-gray-50 rounded-2xl p-6 mb-8 text-left border border-gray-200">
+                <h3 class="font-bold text-gray-500 mb-2">回顧：</h3>
+                <p class="text-lg text-gray-800 mb-4"><strong>題目：</strong> <span id="summary-topic"></span></p>
+                <p class="text-lg text-gray-800"><strong>加分挑戰：</strong> <span id="summary-bonus"></span></p>
+            </div>
+
+            <button onclick="resetGame()" class="py-4 px-10 text-2xl font-bold text-white rounded-2xl bg-[var(--light-blue)] hover:bg-[var(--blue-hover)] transition-colors shadow-lg">
+                🔄 再玩一次
+            </button>
+        </div>
+
+    </main>
+
+    <!-- 音效處理 (使用 Web Audio API 避免外部檔案) -->
+    <script>
+        // --- 資料設定 ---
+        const topics = [
+            "請分享一次你和好朋友吵架後，和好如初的經過和感受。 ",
+            "請報吿一次你在學校午膳後參與的活動，並談談你的感受。 ",
+            "請報吿一次你解決困難的經過，並談談你的感受。 ",
+            "請報吿一次你看醫生的經過和感受。 ",
+            "請報吿一節令你印象深刻的課堂，並談談你的感受。 ",
+            "請你報吿一次忘記帶重要物品上學的經過和感受。 ",
+            "請報吿一件你得到別人關懷的事情，並談談你的體會。 ",
+            "請報吿一次你參與體育活動的經過，並説説你的感受。 ",
+            "請報吿一次你和同學合作的經過，並説説你的感受。 ",
+            "請報告一次你和家人參與節日慶祝活動的經過和感受。 ",
+            "請報告一次你逛超級市場的所見所聞，並説説你的感受。",
+            "你喜歡什麼小動物呢？請説出一次和牠相處的經歷和感受。 ",
+            "請你説出一次印象最深刻的參觀活動，並談談你的感受。 ",
+            "請你説出一次印象最深刻的學校旅行，並談談你的感受。 "
+        ];
+
+        const bonuses = [
+            "✨ 加入具體例子說明",
+            "🎯 運用與題目相關的精準詞彙",
+            "🔗 運用複句 (例如：雖然...但是...、因為...所以...)",
+            "🚩 運用標示語 (例如：首先、其次、總括而言)",
+            "👀 保持眼神接觸，不能只看著草稿",
+            "🗣️ 詳細解釋你的理據"
+        ];
+
+        // --- 狀態變數 ---
+        let selectedTime = 0; // 秒 (0 代表不限時)
+        let timeRemaining = 0;
+        let timerInterval = null;
+        let currentTopic = "";
+        let currentBonus = "";
+        let isGenerating = false;
+        let isPaused = false;
+        let isStopwatchMode = true;
+
+        // --- 音效系統 ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'lever') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'end') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, now); // A4
+                gain.gain.setValueAtTime(0.1, now);
+                // 嗶 嗶 嗶
+                gain.gain.setValueAtTime(0, now + 0.2);
+                osc.frequency.setValueAtTime(440, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now + 0.3);
+                gain.gain.setValueAtTime(0, now + 0.5);
+                osc.frequency.setValueAtTime(880, now + 0.6); // 高音
+                gain.gain.setValueAtTime(0.15, now + 0.6);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                osc.start(now);
+                osc.stop(now + 1.2);
+            }
+        }
+
+        // --- 邏輯函數 ---
+        function selectGameTime(seconds) {
+            playSound('click');
+            selectedTime = seconds;
+            
+            // 更新按鈕樣式
+            document.querySelectorAll('.game-time-btn').forEach(btn => {
+                btn.classList.remove('bg-[var(--light-blue)]', 'text-white', 'shadow-inner');
+                btn.classList.add('bg-[var(--cream-bg)]', 'text-gray-800');
+            });
+            event.target.classList.remove('bg-[var(--cream-bg)]', 'text-gray-800');
+            event.target.classList.add('bg-[var(--light-blue)]', 'text-white', 'shadow-inner');
+
+            updateTimerDisplay(selectedTime);
+        }
+
+        function switchScreen(hideId, showId) {
+            document.getElementById(hideId).classList.add('hidden-screen');
+            document.getElementById(showId).classList.remove('hidden-screen');
+        }
+
+        function startGame() {
+            playSound('click');
+            updateTimerDisplay(0);
+            switchScreen('start-screen', 'game-screen');
+        }
+
+        function formatTextWithLineBreaks(text) {
+            return text.replace(/\n/g, '<br><span class="text-sm text-gray-500 mt-2 block">').concat('</span>');
+        }
+
+        function generateContent() {
+            if (isGenerating) return;
+            isGenerating = true;
+            playSound('lever');
+            
+            const topicEl = document.getElementById('topic-display');
+            const bonusEl = document.getElementById('bonus-display');
+            const actionBtn = document.getElementById('action-btn');
+            
+            actionBtn.classList.add('hidden'); // 隱藏開始按鈕
+            topicEl.classList.add('shuffling-text');
+            bonusEl.classList.add('shuffling-text');
+
+            let shuffleCount = 0;
+            const maxShuffles = 15;
+            const shuffleInterval = setInterval(() => {
+                topicEl.innerText = topics[Math.floor(Math.random() * topics.length)];
+                bonusEl.innerText = bonuses[Math.floor(Math.random() * bonuses.length)];
+                shuffleCount++;
+
+                if (shuffleCount >= maxShuffles) {
+                    clearInterval(shuffleInterval);
+                    
+                    // 最終結果
+                    currentTopic = topics[Math.floor(Math.random() * topics.length)];
+                    currentBonus = bonuses[Math.floor(Math.random() * bonuses.length)];
+                    
+                    topicEl.innerHTML = formatTextWithLineBreaks(currentTopic);
+                    bonusEl.innerHTML = currentBonus;
+                    
+                    topicEl.classList.remove('shuffling-text');
+                    bonusEl.classList.remove('shuffling-text');
+                    playSound('click'); // 完成音效
+                    
+                    // 顯示時間選擇與開始按鈕
+                    document.getElementById('time-selection').classList.remove('hidden');
+                    document.getElementById('time-selection').classList.add('flex');
+                    actionBtn.classList.remove('hidden');
+                    isGenerating = false;
+                }
+            }, 80);
+        }
+
+        function updateTimerDisplay(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            const display = document.getElementById('timer-display');
+            display.innerText = `${m}:${s}`;
+            
+            if (!isStopwatchMode && seconds <= 10 && seconds > 0) {
+                display.classList.add('timer-warning');
+            } else {
+                display.classList.remove('timer-warning');
+            }
+        }
+
+        function startTimer() {
+            playSound('click');
+            document.getElementById('action-btn').classList.add('hidden'); // 隱藏開始按鈕
+            
+            // 隱藏時間選擇區
+            const timeSelection = document.getElementById('time-selection');
+            timeSelection.classList.add('hidden');
+            timeSelection.classList.remove('flex');
+            
+            // 顯示暫停/完成/重新開始按鈕
+            const controls = document.getElementById('active-controls');
+            controls.classList.remove('hidden');
+            controls.classList.add('flex');
+            
+            isPaused = false;
+            updatePauseBtnUI();
+            
+            isStopwatchMode = (selectedTime === 0);
+            timeRemaining = isStopwatchMode ? 0 : selectedTime;
+            updateTimerDisplay(timeRemaining);
+            
+            // 停用拉桿
+            const handle = document.getElementById('lever-handle');
+            handle.style.pointerEvents = 'none';
+            handle.style.opacity = '0.5';
+
+            timerInterval = setInterval(() => {
+                if (!isPaused) {
+                    if (isStopwatchMode) {
+                        timeRemaining++;
+                        updateTimerDisplay(timeRemaining);
+                    } else {
+                        timeRemaining--;
+                        updateTimerDisplay(timeRemaining);
+                        
+                        if (timeRemaining <= 0) {
+                            clearInterval(timerInterval);
+                            endGame();
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
+        function togglePause() {
+            playSound('click');
+            isPaused = !isPaused;
+            updatePauseBtnUI();
+        }
+
+        function updatePauseBtnUI() {
+            const pauseBtn = document.getElementById('pause-btn');
+            if (isPaused) {
+                pauseBtn.innerHTML = '▶ 繼續';
+                pauseBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                pauseBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                document.getElementById('timer-display').classList.add('opacity-50'); // 暫停時半透明提示
+            } else {
+                pauseBtn.innerHTML = '⏸ 暫停';
+                pauseBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                pauseBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                document.getElementById('timer-display').classList.remove('opacity-50');
+            }
+        }
+
+        function resetToLever() {
+            playSound('click');
+            clearInterval(timerInterval);
+            isPaused = false;
+            isStopwatchMode = true;
+            document.getElementById('timer-display').classList.remove('opacity-50');
+
+            // 隱藏控制按鈕
+            const controls = document.getElementById('active-controls');
+            controls.classList.add('hidden');
+            controls.classList.remove('flex');
+            
+            // 隱藏時間選擇區與開始按鈕
+            document.getElementById('time-selection').classList.add('hidden');
+            document.getElementById('time-selection').classList.remove('flex');
+            document.getElementById('action-btn').classList.add('hidden');
+            
+            // 重置文字與拉桿狀態
+            document.getElementById('topic-display').innerHTML = '<span class="text-gray-400 italic">請拉動右方拉桿抽取題目...</span>';
+            document.getElementById('bonus-display').innerHTML = '<span class="text-gray-400 italic">等待抽取...</span>';
+            
+            const handle = document.getElementById('lever-handle');
+            handle.style.pointerEvents = 'auto';
+            handle.style.opacity = '1';
+            
+            updateTimerDisplay(selectedTime);
+        }
+
+        function endGame() {
+            playSound('end');
+            
+            // 隱藏控制按鈕
+            const controls = document.getElementById('active-controls');
+            controls.classList.add('hidden');
+            controls.classList.remove('flex');
+
+            document.getElementById('summary-topic').innerHTML = formatTextWithLineBreaks(currentTopic);
+            document.getElementById('summary-bonus').innerText = currentBonus;
+            
+            switchScreen('game-screen', 'end-screen');
+            createConfetti();
+        }
+
+        function resetGame() {
+            playSound('click');
+            // 重置狀態
+            clearInterval(timerInterval);
+            document.getElementById('topic-display').innerHTML = '<span class="text-gray-400 italic">請拉動右方拉桿抽取題目...</span>';
+            document.getElementById('bonus-display').innerHTML = '<span class="text-gray-400 italic">等待抽取...</span>';
+            
+            // 恢復拉桿
+            const handle = document.getElementById('lever-handle');
+            handle.style.pointerEvents = 'auto';
+            handle.style.opacity = '1';
+            
+            // 隱藏開始按鈕與時間選擇
+            document.getElementById('action-btn').classList.add('hidden');
+            document.getElementById('time-selection').classList.add('hidden');
+            document.getElementById('time-selection').classList.remove('flex');
+            
+            // 清除煙火
+            document.querySelectorAll('.confetti-piece').forEach(e => e.remove());
+            
+            updateTimerDisplay(selectedTime);
+            switchScreen('end-screen', 'game-screen');
+        }
+
+        // --- 拉桿互動邏輯 (支援滑鼠與觸控) ---
+        const handle = document.getElementById('lever-handle');
+        const rod = document.getElementById('lever-rod');
+        let isDragging = false;
+        let startY = 0;
+        let currentY = 0;
+        const maxDrag = 100; // 最大下拉距離
+
+        function dragStart(e) {
+            if (isGenerating || handle.style.pointerEvents === 'none') return;
+            isDragging = true;
+            handle.classList.add('dragging');
+            rod.style.transition = 'none';
+            startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        }
+
+        function dragMove(e) {
+            if (!isDragging) return;
+            e.preventDefault(); // 防止頁面滾動
+            const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            const deltaY = clientY - startY;
+            
+            if (deltaY > 0 && deltaY <= maxDrag) {
+                currentY = deltaY;
+                handle.style.transform = `translate(-50%, ${currentY}px)`;
+                rod.style.height = `${100 - currentY}px`; // 桿子縮短
+            }
+        }
+
+        function dragEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            handle.classList.remove('dragging');
+            
+            // 恢復過渡動畫
+            handle.style.transform = 'translate(-50%, 0)';
+            rod.style.transition = 'height 0.3s ease';
+            rod.style.height = '100px';
+
+            // 如果拉動超過一定距離則觸發
+            if (currentY > maxDrag * 0.6) {
+                generateContent();
+            }
+            currentY = 0;
+        }
+
+        handle.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', dragEnd);
+
+        handle.addEventListener('touchstart', dragStart, {passive: false});
+        document.addEventListener('touchmove', dragMove, {passive: false});
+        document.addEventListener('touchend', dragEnd);
+
+        // --- 煙火特效 (Confetti) ---
+        function createConfetti() {
+            const endScreen = document.getElementById('end-screen');
+            const colors = ['#fce18a', '#ff726d', '#b48def', '#f4306d', '#ADD8E6'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti-piece');
+                
+                // 隨機屬性
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-10px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // 隨機動畫參數
+                const duration = Math.random() * 2 + 2; // 2-4s
+                const delay = Math.random() * 0.5;
+                confetti.style.animation = `confettiFall ${duration}s ${delay}s linear forwards`;
+                
+                endScreen.appendChild(confetti);
+            }
+        }
+    </script>
+</body>
+</html>
